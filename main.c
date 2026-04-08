@@ -26,13 +26,21 @@ int inputNum = 0;
 int main(void) {
 	unsigned char pressedKey;
 	unsigned char start1[] = "Numdle:";
-	unsigned char start1[] = "Guess The Equation";
+	unsigned char start2[] = "Equation Game";
+	unsigned char randNum[] = "Number: 12";
 	unsigned char next[] = "Next Guess";
 	
 	initKeypadIO();
 	lcd_init();
 	lcd_gotoxy(1,1);
-	lcd_print(start);
+	lcd_print(start1);
+	lcd_gotoxy(1,2);
+	lcd_print(start2);	
+	_delay_ms(2500);
+	lcdCommanda(0x01);
+	_delay_ms(2);
+	lcd_gotoxy(1,1);
+	lcd_print(randNum);
 	
 	while(1){
 		//only allows 6 inputs
@@ -71,14 +79,14 @@ void checkGuess(unsigned char *guess, unsigned char *equation) {
 	unsigned char correct[] = "Correct";
 	unsigned char incorrect[] = "Incorrect";
 		
-	int correct = 1;
+	int match = 1;
     for(int i = 0; i < 6; i++){
         if(guess[i] != equation[i]){
-			correct = 0;
+			match = 0;
 			break;
         } 
     }
-	if (correct == 0){
+	if (match == 0){
 		lcdCommanda(0x01);
 		_delay_ms(2);
 		lcd_gotoxy(1,1);
@@ -89,5 +97,5 @@ void checkGuess(unsigned char *guess, unsigned char *equation) {
 		lcd_gotoxy(1,1);
 		lcd_print(correct);  
 	}
-    
+    _delay_ms(500);
 }
