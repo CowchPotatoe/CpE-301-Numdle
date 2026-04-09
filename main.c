@@ -20,8 +20,6 @@ unsigned char guess[6];
 unsigned char equation[6] = {'6','+','3','0','/','5'};
 // number of attempts to guess equation
 int numAttempts = 5;
-// counts how many inputs
-int inputNum = 0;
 
 int main(void) {
 	unsigned char pressedKey;
@@ -43,32 +41,36 @@ int main(void) {
 	lcd_print(randNum);
 	
 	while(1){
-		//only allows 6 inputs
-		if(inputNum<6){
-			checkAnyKeyPressed();
-			debounce();
-			pressedKey = identifyPressedKey();
-			// stores the key pressed
-        	guess[inputNum] = pressedKey;
-			// displays the char onto the lcd
-			lcd_gotoxy(inputNum+1,2);
-			lcdData(pressedKey);
-			// update where the cursor is next
-			inputNum++;
-			_delay_ms(300);
-			
-			// if user has entered 6 characters, check guess
-			if(inputNum == 6){
-				checkGuess(guess, equation);
-				_delay_ms(500);
-				// reset inputNum for next guess
-				inputNum = 0;
-				lcdCommanda(0x01);
-				_delay_ms(2);
-				lcd_gotoxy(1,1);
-				lcd_print(next);
-			}
-		}
+		// Collect exactly 6 inputs
+        for(i = 0; i < 6; i++){
+			// takes input
+            checkAnyKeyPressed();
+            debounce();
+            pressedKey = identifyPressedKey();
+			// stores input
+            guess[i] = pressedKey;
+			// display input
+            lcd_gotoxy(i+1,2);
+            lcdData(pressedKey);
+            _delay_ms(300);
+        }
+        // ignore every input after 6 inputs unless its '='
+        do {
+            checkAnyKeyPressed();
+            debounce();
+            pressedKey = identifyPressedKey();
+        } while (pressedKey != '=');
+        // Check the guess
+        checkGuess(guess, equation);
+        // Wait for button press before
+        checkAnyKeyPressed();
+        debounce();
+        identifyPressedKey();
+        // clear screen
+        lcdCommanda(0x01);
+        _delay_ms(2);
+        lcd_gotoxy(1,1);
+        lcd_print(next);
 	}
 	return 0;
 }
