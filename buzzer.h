@@ -2,14 +2,10 @@
 #define BUZZER_H
 
 #include <avr/io.h>
-
-// Buzzer Macros
-#define BUZZER_DDR  DDRB
-#define BUZZER_PORT PORTB
-#define BUZZER_PIN  PB5
+#include <stdint.h>
 
 void buzzer_init();
-void buzzer_on();
+void buzzer_tone(unsigned int freq);
 void buzzer_off();
 void buzzer_error();
 

@@ -1,8 +1,8 @@
 // Board Row[1:4] = PB0:3 = Row 0:3
-// Row[1] = PB0 = Row 0
-// Row[2] = PB1 = Row 1
-// Row[3] = PB2 = Row 2
-// Row[4] = PB3 = Row 3
+// Row[1] = PD0 = Row 0
+// Row[2] = PD1 = Row 1
+// Row[3] = PD2 = Row 2
+// Row[4] = PD3 = Row 3
 //
 // Board Col[1:4] = PB0:3 = Col 0:3
 // Col[4] = PC3 = Col 3
@@ -17,10 +17,11 @@
 
 // Keypad macros
 #define KEY_CDDR DDRC
-#define KEY_RDDR DDRB
 #define KEY_CPORT PORTC
-#define KEY_RPORT PORTB
 #define KEY_COLSREAD PINC
+
+#define KEY_RDDR DDRD
+#define KEY_RPORT PORTD
 
 void initKeypadIO();
 void checkAnyKeyPressed();
