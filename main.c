@@ -8,6 +8,7 @@
 #define F_CPU 16000000UL
 #include <avr/io.h>
 #include <util/delay.h>
+#include "i2c.h"
 #include "lcd.h"
 #include "keypad.h"
 #include "buzzer.h"
@@ -63,6 +64,10 @@ int main(void) {
 	eqIndex = TCNT0 % NUM_EQUATIONS;
 
 	while(1){
+		// clear input
+		for (int i = 0; i < 6; i++) {
+			guess[i] = 0;
+		}
 		// Collect exactly 6 inputs
         for(int i = 0; i < 6; i++){
 			// takes input
@@ -127,6 +132,7 @@ void checkGuess(unsigned char *guess, unsigned char *equation) {
 		_delay_ms(2);
 		lcd_gotoxy(1,1);
 		lcd_print(correct);
+		buzzer_win();
 	}
     _delay_ms(300);
 }

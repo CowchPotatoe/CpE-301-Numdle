@@ -8,5 +8,6 @@ void buzzer_init();
 void buzzer_tone(unsigned int freq);
 void buzzer_off();
 void buzzer_error();
+void buzzer_win();
 
 #endif

@@ -4,63 +4,6 @@
 #include <stdint.h>
 #include "lcd.h"
 
-// I2C LCD address (PCF8574 chip)
-#define LCD_ADDR 0x27
-
-// LCD Control bits (PCF8574 pins)
-#define LCD_RS 0
-#define LCD_RW 1
-#define LCD_EN 2
-#define LCD_BL 3   // backlight
-
-// Initialize the i2c protocol
-void i2c_init(void){
-	TWSR = 0x00;
-	TWBR = 72;          // ~100kHz for 16MHz
-	TWCR = (1 << TWEN);
-}
-
-// Start i2c communication
-void i2c_start(void) {
-	// Clear interrupt flag, enable TWI, enable start bit
-	TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN);
-	while (!(TWCR & (1 << TWINT)));
-}
-
-// Stop i2c communication
-void i2c_stop() {
-	// Clear interrupt flag, enable TWI, enable stop condition
-	TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTO);
-	_delay_us(10);
-}
-
-// Write
-void i2c_write(unsigned char data) {
-	// Set data register as data
-	TWDR = data;
-	// Clear interrupt flag, enable TWI
-	TWCR = (1 << TWINT) | (1 << TWEN);
-	while (!(TWCR & (1 << TWINT)));
-}
-
-
-// LCD with I2C, PCF8574 chip
-#define LCD_ADDR 0x27
-
-#define RS 0 // LCD RS
-#define RW 1 // LCD RW
-#define E  2 // LCD EN
-
-/*
-https://www.mikrocontroller.net/attachment/521754/PCF8574_I2C_LCD_Cir_En.pdf
-https://cdn.sparkfun.com/assets/9/5/f/7/b/HD44780.pdf
-P0   -> RS
-P1   -> RW
-P2   -> EN
-P3   -> BL-   # 1 for on, 0 for off
-P4-7 -> DB7-4 # We must use 4-bit mode
-*/
-
 // I2C and LCD interfacer, required for every function
 void lcd_expander_write(uint8_t data) {
 	i2c_start();

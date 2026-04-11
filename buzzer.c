@@ -39,11 +39,21 @@ void buzzer_off() {
 	PORTB &= ~(1 << PB1);
 }
 
-void buzzer_error() {
-	for (int i = 0; i < 3; i++) {
-		buzzer_tone(800);
-		_delay_ms(150);
-		buzzer_off();
-		_delay_ms(100);
+void buzzer_error(void) {
+	// Descending tone 
+	for (int freq = 1200; freq >= 400; freq -= 50) {
+		buzzer_tone(freq);
+		_delay_ms(40);
 	}
+	buzzer_off();
+}
+
+void buzzer_win() {
+	for (int i = 0; i < 6; i++) {
+		buzzer_tone(1400);
+		_delay_ms(60);
+		buzzer_tone(900);
+		_delay_ms(60);
+	}
+	buzzer_off();
 }
