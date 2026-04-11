@@ -8,7 +8,6 @@
 #define F_CPU 16000000UL
 #include <avr/io.h>
 #include <util/delay.h>
-#include <stdio.h> //
 #include "lcd.h"
 #include "keypad.h"
 #include "buzzer.h"
@@ -42,6 +41,7 @@ int main(void) {
 	
 	// initialize components
 	initKeypadIO();
+	i2c_init();
 	lcd_init();
 	buzzer_init();
 	initTimer();
@@ -121,8 +121,6 @@ void checkGuess(unsigned char *guess, unsigned char *equation) {
 		for(int i = 0; i < 6; i++){
 			lcdData(equation[i]);
 		}
-		_delay_ms(1500);
-
 		buzzer_error();
 	} else{ // Tells user inputted equation is correct
 		lcdCommanda(0x01);

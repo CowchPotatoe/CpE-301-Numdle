@@ -1,58 +1,149 @@
-#include "lcd.h"
 #define F_CPU 16000000UL
 #include <avr/io.h>
 #include <util/delay.h>
+#include <stdint.h>
+#include "lcd.h"
 
-void lcdCommanda (unsigned char cmnd) {  
-	LCD_DPRT = cmnd;				// Send cmnd to data port  
-	
-	LCD_CPRT &= ~(1 << LCD_RS);		// RS = 0 for command  
-	//RW to GND
-	//LCD_CPRT &= ~(1 << LCD_RW);   // RW = 0 for write   
-	LCD_CPRT |=  (1 << LCD_EN);		// EN = 1 (E = EN) for H-to-L pulse  
-	_delay_us(1);					// Wait to make enable wide  
-	LCD_CPRT &= ~(1 << LCD_EN);		// EN = 0 for H-to_L pulse  
-	_delay_us(100);					// Wait to make enable wide 
-} 
- 
-void lcdData(unsigned char data) {  
-	LCD_DPRT = data;				// Send data to data port 
-	LCD_CPRT |=  (1 << LCD_RS);		// RS = 1 for data  
-	//RW to GND
-	//LCD_CPRT &= ~(1 << LCD_RW);		// RW = 0 for write   
-	LCD_CPRT |=  (1 << LCD_EN);		// EN = 1 (E = EN) for H-to-L pulse  
-	_delay_us(1);					// Wait to make enable wide  
-	LCD_CPRT &= ~(1 << LCD_EN);		// EN = 0 for H-to_L pulse  
-	_delay_us(100);					// Wait to make enable wide  
-} 
+// I2C LCD address (PCF8574 chip)
+#define LCD_ADDR 0x27
 
-void lcd_init() {  
-	LCD_DDDR = 0xFF;  
-	// LCD_CDDR = 0xFF;    
-	// LCD_CPRT &= ~(1 << LCD_EN);		// LCD_EN = 0  
-    LCD_CDDR |= (1<<LCD_RS)|(1<<LCD_EN); // RS and EN as output
+// LCD Control bits (PCF8574 pins)
+#define LCD_RS 0
+#define LCD_RW 1
+#define LCD_EN 2
+#define LCD_BL 3   // backlight
 
-	_delay_us(2000);    
-	// Wait for init  
-	lcdCommanda(0x38);				// Initialize LCD 2 line, 5x7 characters 
-	lcdCommanda(0x0E);				// Display on, cursor on  
-	lcdCommanda(0x01);				// Clear LCD  
-	_delay_us(2000);				// Wait  
-	lcdCommanda(0x06);				// Shift cursor right after display char.
-} 
- 
-void lcd_gotoxy(unsigned char x, unsigned char y) {  
-	unsigned char firstCharAdr[] = {0x80, 0xC0, 0x94, 0xD4};   
-	
-	lcdCommanda(firstCharAdr[y-1] + x -1);  
-	_delay_us(100); 
-} 
- 
-void lcd_print(unsigned char * str) {  
-	unsigned char i = 0;  
-	
-	while (str[i]!=0)  {   
-		lcdData(str[i]); 
-		i++;  
+// Initialize the i2c protocol
+void i2c_init(void){
+	TWSR = 0x00;
+	TWBR = 72;          // ~100kHz for 16MHz
+	TWCR = (1 << TWEN);
+}
+
+// Start i2c communication
+void i2c_start(void) {
+	// Clear interrupt flag, enable TWI, enable start bit
+	TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN);
+	while (!(TWCR & (1 << TWINT)));
+}
+
+// Stop i2c communication
+void i2c_stop() {
+	// Clear interrupt flag, enable TWI, enable stop condition
+	TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTO);
+	_delay_us(10);
+}
+
+// Write
+void i2c_write(unsigned char data) {
+	// Set data register as data
+	TWDR = data;
+	// Clear interrupt flag, enable TWI
+	TWCR = (1 << TWINT) | (1 << TWEN);
+	while (!(TWCR & (1 << TWINT)));
+}
+
+
+// LCD with I2C, PCF8574 chip
+#define LCD_ADDR 0x27
+
+#define RS 0 // LCD RS
+#define RW 1 // LCD RW
+#define E  2 // LCD EN
+
+/*
+https://www.mikrocontroller.net/attachment/521754/PCF8574_I2C_LCD_Cir_En.pdf
+https://cdn.sparkfun.com/assets/9/5/f/7/b/HD44780.pdf
+P0   -> RS
+P1   -> RW
+P2   -> EN
+P3   -> BL-   # 1 for on, 0 for off
+P4-7 -> DB7-4 # We must use 4-bit mode
+*/
+
+// I2C and LCD interfacer, required for every function
+void lcd_expander_write(uint8_t data) {
+	i2c_start();
+	i2c_write(LCD_ADDR << 1);    // write mode
+	i2c_write(data | (1 << 3));  // keep backlight on, PIN3
+	i2c_stop();
+}
+
+// Pulse enable signal for basically everything
+void lcd_pulse(uint8_t data) {
+	lcd_expander_write(data | (1 << E));
+	_delay_us(1);
+	lcd_expander_write(data & ~(1 << E));
+	_delay_us(50);
+}
+
+// Send 4 bits since we are in 4 bit mode
+void lcd_write4(uint8_t nibble, uint8_t mode) {
+	uint8_t data = (nibble << 4);
+
+	if (mode) {
+		data |= (1 << RS);  // RS = data
+		} else {
+		data &= ~(1 << RS); // RS = command
 	}
-} 
+
+	lcd_pulse(data);
+}
+
+// Send full byte
+void lcd_send(uint8_t value, uint8_t mode) {
+	lcd_write4(value >> 4, mode);   // high nibble
+	lcd_write4(value & 0x0F, mode); // low nibble
+}
+
+// Commands
+void lcdCommanda(unsigned char cmd) {
+	lcd_send(cmd, 0);
+}
+
+// Data (characters)
+void lcdData(unsigned char data) {
+	lcd_send(data, 1);
+}
+
+// Initialize LCD
+void lcd_init() {
+	_delay_ms(50);
+
+	// Force 4-bit mode
+	lcd_write4(0x03, 0);
+	_delay_ms(5);
+	lcd_write4(0x03, 0);
+	_delay_us(150);
+	lcd_write4(0x03, 0);
+	lcd_write4(0x02, 0);
+
+	// 4-bit, 2 lines, 5x8 font
+	lcdCommanda(0x28);
+
+	// Display ON, cursor OFF
+	lcdCommanda(0x0C);
+
+	// Clear display
+	lcdCommanda(0x01);
+	_delay_ms(2);
+
+	// Entry mode
+	lcdCommanda(0x06);
+}
+
+// Print string
+void lcd_print(unsigned char * str) {
+	unsigned char i = 0;
+	while (str[i]!=0) {
+		lcdData(str[i]); i++;
+	}
+}
+
+// Function for changing position on the LCD
+void lcd_gotoxy(unsigned char x, unsigned char y) {
+	if (y < 1 || y > 4) return;
+
+	unsigned char firstCharAdr[] = {0x80, 0xC0, 0x94, 0xD4};
+	lcdCommanda(firstCharAdr[y - 1] + x - 1);
+}
