@@ -18,6 +18,11 @@
 
 //Function prototypes
 void initTimer();
+void getUserInput();
+void storeGuess();
+void result();
+void gamePlay();
+void resetGame();
 int checkGuess(unsigned char *guess, unsigned char *equation);
 
 // Variables and arrays:
@@ -33,24 +38,18 @@ unsigned char randEq[NUM_EQUATIONS][6] = {
 };
 //store answers corresponding to the equations
 int answers[NUM_EQUATIONS] = {12, 5, -33, 72, 20};
-// number of attempts to guess equation
-int attempts = 0;
-// store guess history (5 attempts × 6 chars)
+unsigned char guess[6];
 unsigned char guessHistory[5][6];
-// boolean for game over status
+int attempts = 0;
 int gameOver = 0;
+int match = 0;
+int eqIndex = 0;
+unsigned char pressedKey;
 
 int main(void) {
-	unsigned char pressedKey;
-	unsigned char start1[] = "Numdle:";
+	unsigned char start1[] = "Numdle1:";
 	unsigned char start2[] = "GuessTheEquation";
 	unsigned char randNum[] = "Number:";
-	unsigned char next[] = "Next Guess";
-	unsigned char win[] = "YOU WIN!!!";
-	unsigned char lose[] = "Incorrect";
-	unsigned char correct[] = "Correct Eq:";
-	int match = 0;
-
 	
 	// initialize components
 	initKeypadIO();
@@ -69,103 +68,121 @@ int main(void) {
 	lcd_gotoxy(1,1);
 	lcd_print(randNum);
 	
-	// index used for equation
-	int eqIndex = 0;
-
 	// use timer value as random number
 	eqIndex = TCNT0 % NUM_EQUATIONS;
 
 	while(1){
-		// clear input
-		for (int i = 0; i < 6; i++) {
-			guess[i] = 0;
-		}
-		// Collect exactly 6 inputs
-        for(int i = 0; i < 6; i++){
-			// takes input
-            checkAnyKeyPressed();
-            debounce();
-            pressedKey = identifyPressedKey();
-			// stores input
-            guess[i] = pressedKey;
-			// display input
-            lcd_gotoxy(i+1,2);
-            lcdData(pressedKey);
-            _delay_ms(300);
-        }
-        // ignore every input after 6 inputs unless its '='
-        do {
-            checkAnyKeyPressed();
-            debounce();
-            pressedKey = identifyPressedKey();
-        } while (pressedKey != '=');
-		
-		// store guess in history
-		for (int i = 0; i < 6; i++) {
-			guessHistory[attempts][i] = guess[i];
-		}
-		// check guess
-		match = checkGuess(guess, randEq[eqIndex]);
-		// increments guess
-		if (match==1) {
-			lcdCommanda(0x01);
-			_delay_ms(2);
-			lcd_gotoxy(1,1);
-			lcd_print(win);
-			buzzer_win();
-			gameOver = 1;
-		} 
-		else {
-			lcdCommanda(0x01);
-			_delay_ms(2);
-			lcd_gotoxy(1,1);
-			lcd_print(lose);
-			// show correct equation (debug)
-			lcd_gotoxy(1,2);
-			for(int i = 0; i < 6; i++){
-				lcdData(randEq[eqIndex][i]);
-			}
-			buzzer_error();
-			attempts++;
-			// wait for button click
-			checkAnyKeyPressed();
-			debounce();
-			pressedKey = identifyPressedKey();
-			// next guess
-			lcdCommanda(0x01);
-			_delay_ms(800);
-			lcd_gotoxy(1, 1);
-			lcd_print(next);
-		}
-
-		// out of attempts
-		if (attempts >= 5 && !match){
-			lcdCommanda(0x01);
-			lcd_gotoxy(1, 1);
-			lcd_print(correct);
-			lcd_gotoxy(1, 2);
-			for (int i = 0; i < 6; i++) {
-				lcdData(randEq[eqIndex][i]);
-			}
-			buzzer_error();
-			gameOver = 1;
-		}
-		// game over
-		if (gameOver) {
-			checkAnyKeyPressed();
-			debounce();
-			pressedKey = identifyPressedKey();
-			// Reset GAME
-			attempts = 0;
-			gameOver = 0;
-			// pick new equation
-			eqIndex = (TCNT0^pressedKey) % NUM_EQUATIONS;
-			lcdCommanda(0x01);
-			_delay_ms(800);
-		}
+		getUserInput();
+		storeGuess();
+		result();
+		gamePlay();
 	}
 	return 0;
 }
+
+void getUserInput(void) {
+	for (int i = 0; i < 6; i++) {
+		guess[i] = 0;
+		checkAnyKeyPressed();
+		debounce();
+		pressedKey = identifyPressedKey();
+		guess[i] = pressedKey;
+		lcd_gotoxy(i + 1, 2);
+		lcdData(pressedKey);
+		_delay_ms(300);
+	}
+	// wait for '='
+	do {
+		checkAnyKeyPressed();
+		debounce();
+		pressedKey = identifyPressedKey();
+	} while (pressedKey != '=');
+}
+
+void storeGuess() {
+	for (int i = 0; i < 6; i++) {
+		guessHistory[attempts][i] = guess[i];
+	}
+	match = checkGuess(guess, randEq[eqIndex]);
+}
+
+void result() {
+	unsigned char next[] = "Next Guess";
+	unsigned char win[] = "YOU WIN!!!";
+	unsigned char lose[] = "Incorrect";
+
+	if (match == 1) {
+		lcdCommanda(0x01);
+		_delay_ms(2);
+		lcd_gotoxy(1,1);
+		lcd_print(win);
+		buzzer_win();
+		gameOver = 1;
+		return;
+	}
+	// Wrong guess
+	attempts++;
+	lcdCommanda(0x01);
+	_delay_ms(2);
+	lcd_gotoxy(1,1);
+	lcd_print(lose);
+	// debug purpose, show current equation
+	lcd_gotoxy(1,2);
+	for (int i = 0; i < 6; i++) {
+		lcdData(randEq[eqIndex][i]);
+	}
+	buzzer_error();
+	// Show next prompt if player still has attempts left
+	if (attempts < 5) {
+		checkAnyKeyPressed();
+		debounce();
+		pressedKey = identifyPressedKey();
+		lcdCommanda(0x01);
+		_delay_ms(2);
+		lcd_gotoxy(1,1);
+		lcd_print(next);
+		_delay_ms(800);
+	}
+}
+
+void gamePlay() {
+	unsigned char correct[] = "Correct Eq:";
+	checkAnyKeyPressed();
+	debounce();
+	pressedKey = identifyPressedKey();
+
+	if (attempts >= 5 && match == 0) {
+		lcdCommanda(0x01);
+		_delay_ms(2);
+		lcd_gotoxy(1,1);
+		lcd_print(correct);
+		lcd_gotoxy(1,2);
+		for (int i = 0; i < 6; i++) {
+			lcdData(randEq[eqIndex][i]);
+		}
+		buzzer_error();
+		gameOver = 1;
+	}
+	if (gameOver) {
+		checkAnyKeyPressed();
+		debounce();
+		pressedKey = identifyPressedKey();
+		resetGame();
+	}
+}
+
+void resetGame() {
+	unsigned char newNum[] = "New Number:";
+	attempts = 0;
+	gameOver = 0;
+	eqIndex = TCNT0 % NUM_EQUATIONS;
+	lcdCommanda(0x01);
+	lcd_gotoxy(1,1);
+	lcd_print(newNum);
+	_delay_ms(800);
+	
+}
+
 
 // Checks user guess against the correct equation
 int checkGuess(unsigned char *guess, unsigned char *equation) {
