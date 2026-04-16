@@ -8,6 +8,7 @@
 #define F_CPU 16000000UL
 #include <avr/io.h>
 #include <util/delay.h>
+#include <stdlib.h>
 #include "i2c.h"
 #include "lcd.h"
 #include "keypad.h"
@@ -39,12 +40,12 @@ unsigned char randEq[NUM_EQUATIONS][6] = {
     {'7','*','8','-','3','6'}  // 20
 };
 
-// corresponding equations
+// used for string conversion
+char answerStr[5];
+// corresponding answers
 int answers[NUM_EQUATIONS] = {12, 5, -33, 72, 20};
-
 // store previous guesses
 unsigned char guessHistory[NUM_EQUATIONS][6];
-
 // number of guesses left
 int attempts = 0;
 // bool to indicate if the game is over
@@ -88,6 +89,13 @@ int main(void) {
 	
 	// Select random equation using timer
 	eqIndex = TCNT0 % NUM_EQUATIONS;
+
+	// convert answer to string
+	itoa(answers[eqIndex], answerStr, 10);
+
+	// display answer on LCD
+	lcd_gotoxy(9,1); // position after "Number:"
+	lcd_print(answerStr);
 
 	while(1){
 		// get equation from keypad
@@ -219,13 +227,21 @@ void gamePlay() {
 
 // resets the game and select new equation
 void resetGame() {
-	unsigned char newNum[] = "New Number:";
+	unsigned char newNum[] = "Number:";
 	attempts = 0;
 	gameOver = 0;
 	eqIndex = TCNT0 % NUM_EQUATIONS;
 	lcdCommanda(0x01);
 	lcd_gotoxy(1,1);
 	lcd_print(newNum);
+
+    // convert answer to string
+	itoa(answers[eqIndex], answerStr, 10);
+
+	// display answer on LCD
+	lcd_gotoxy(9,1); // position after "Number:"
+	lcd_print(answerStr);
+
 	_delay_ms(800);
 	
 }
