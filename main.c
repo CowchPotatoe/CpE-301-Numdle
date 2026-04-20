@@ -112,27 +112,41 @@ int main(void) {
 
 // takes keypad as user input
 void getUserInput(void) {
-	// only recieve 6 inputs
-	for (int i = 0; i < 6; i++) {
-		guess[i] = 0;
-		// wait for key press
-		checkAnyKeyPressed();
-		debounce();
-		pressedKey = identifyPressedKey();
-		// stores and display character
-		guess[i] = pressedKey;
-		lcd_gotoxy(i + 1, 2);
-		lcdData(pressedKey);
-		// delay for readability
-		_delay_ms(100);
-	}
-	// wait for '=' before continuing
-	do {
-		checkAnyKeyPressed();
-		debounce();
-		pressedKey = identifyPressedKey();
-	} while (pressedKey != '=');
+    // Clear second row
+    lcd_gotoxy(1,2);
+
+    // Print attempt number
+    lcdData((attempts + 1) + '0');  // convert int to char
+    lcdData('.');
+    lcdData(' ');
+
+    // only receive 6 inputs
+    for (int i = 0; i < 6; i++) {
+        guess[i] = 0;
+
+        // wait for key press
+        checkAnyKeyPressed();
+        debounce();
+        pressedKey = identifyPressedKey();
+
+        // store and display character
+        guess[i] = pressedKey;
+
+        // shift display to start after "1. "
+        lcd_gotoxy(i + 4, 2);
+        lcdData(pressedKey);
+
+        _delay_ms(100);
+    }
+
+    // wait for '=' before continuing
+    do {
+        checkAnyKeyPressed();
+        debounce();
+        pressedKey = identifyPressedKey();
+    } while (pressedKey != '=');
 }
+
 
 // stores the guess for each attempt
 void storeGuess() {
@@ -146,7 +160,7 @@ void storeGuess() {
 
 // displays win/lose message after each guess
 void result() {
-	unsigned char next[] = "Next Guess";
+	unsigned char num[] = "Number: ";
 	unsigned char win[] = "YOU WIN!!!";
 	unsigned char lose[] = "Incorrect";
 
@@ -190,7 +204,13 @@ void result() {
 		lcdCommanda(0x01);
 		_delay_ms(2);
 		lcd_gotoxy(1,1);
-		lcd_print(next);
+		// show the number to quess
+		lcd_print(num);
+		// convert answer to string
+		itoa(answers[eqIndex], answerStr, 10);
+		// display answer on LCD
+		lcd_gotoxy(9,1); // position after "Number:"
+		lcd_print((unsigned char*)answerStr);
 		_delay_ms(500);
 	}
 }
