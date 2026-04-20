@@ -112,33 +112,41 @@ int main(void) {
 
 // takes keypad as user input
 void getUserInput(void) {
-    // Clear second row
     lcd_gotoxy(1,2);
-
     // Print attempt number
-    lcdData((attempts + 1) + '0');  // convert int to char
+    lcdData((attempts + 1) + '0');
     lcdData('.');
     lcdData(' ');
 
-    // only receive 6 inputs
-    for (int i = 0; i < 6; i++) {
-        guess[i] = 0;
-
-        // wait for key press
+    int i = 0;
+	// only receive 6 inputs
+    while (i < 6) {
         checkAnyKeyPressed();
         debounce();
         pressedKey = identifyPressedKey();
 
-        // store and display character
+        // backspace handling
+        if (pressedKey == '_') {
+            if (i > 0) {
+                i--; // move back in array
+                // erase from LCD
+                lcd_gotoxy(i + 4, 2);
+                lcdData(' ');
+                // move cursor back again
+                lcd_gotoxy(i + 4, 2);
+            }
+            continue;
+        }
+        // store input
         guess[i] = pressedKey;
 
-        // shift display to start after "1. "
+		// display input
         lcd_gotoxy(i + 4, 2);
         lcdData(pressedKey);
-
+		// update index
+        i++;
         _delay_ms(100);
     }
-
     // wait for '=' before continuing
     do {
         checkAnyKeyPressed();
@@ -146,7 +154,6 @@ void getUserInput(void) {
         pressedKey = identifyPressedKey();
     } while (pressedKey != '=');
 }
-
 
 // stores the guess for each attempt
 void storeGuess() {
