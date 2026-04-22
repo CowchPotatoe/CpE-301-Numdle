@@ -87,6 +87,12 @@ int main(void) {
 	lcd_gotoxy(1,1);
 	lcd_print(randNum);
 	
+    lcd_gotoxy(1,2);
+    // Print attempt number
+    lcdData((attempts + 1) + '0');
+    lcdData('.');
+    lcdData(' ');
+	
 	// Select random equation using timer
 	eqIndex = TCNT0 % NUM_EQUATIONS;
 
@@ -112,11 +118,6 @@ int main(void) {
 
 // takes keypad as user input
 void getUserInput(void) {
-    lcd_gotoxy(1,2);
-    // Print attempt number
-    lcdData((attempts + 1) + '0');
-    lcdData('.');
-    lcdData(' ');
 
     int i = 0;
 	// only receive 6 inputs
@@ -124,6 +125,7 @@ void getUserInput(void) {
         checkAnyKeyPressed();
         debounce();
         pressedKey = identifyPressedKey();
+		
 
         // backspace handling
         if (pressedKey == '_') {
@@ -134,9 +136,11 @@ void getUserInput(void) {
                 lcdData(' ');
                 // move cursor back again
                 lcd_gotoxy(i + 4, 2);
+				_delay_ms(200);
             }
             continue;
         }
+
         // store input
         guess[i] = pressedKey;
 
@@ -218,11 +222,17 @@ void result() {
 		// display answer on LCD
 		lcd_gotoxy(9,1); // position after "Number:"
 		lcd_print((unsigned char*)answerStr);
-		_delay_ms(500);
+		_delay_ms(200);
+		
+		lcd_gotoxy(1,2);
+		// Print attempt number
+		lcdData((attempts + 1) + '0');
+		lcdData('.');
+		lcdData(' ');
 	}
 }
 
-// handle slosing condition and game reset
+// handle losing condition and game reset
 void gamePlay() {
 	unsigned char correct[] = "Correct Eq:";
 	// wait for user input
@@ -270,6 +280,12 @@ void resetGame() {
 	lcd_print((unsigned char*)answerStr);
 
 	_delay_ms(800);
+	
+	lcd_gotoxy(1,2);
+	// Print attempt number
+	lcdData((attempts + 1) + '0');
+	lcdData('.');
+	lcdData(' ');
 	
 }
 
