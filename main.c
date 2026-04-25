@@ -7,6 +7,7 @@
 
 #define F_CPU 16000000UL
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <util/delay.h>
 #include <stdlib.h>
 #include "i2c.h"
@@ -14,11 +15,17 @@
 #include "keypad.h"
 #include "buzzer.h"
 
+//Rotary encoder PINS
+#define ENC_CLK PD6
+#define ENC_DT PD7
+
 //Number of possible equations
 #define NUM_EQUATIONS 5
 
 //Function prototypes
 void initTimer();
+void initEncoder();
+void scrollHistory(int direction);
 void getUserInput();
 void storeGuess();
 void result();
@@ -57,6 +64,11 @@ int eqIndex = 0;
 // stores last key press
 unsigned char pressedKey;
 
+// Encoder variables
+volatile unsigned char lastCLK = 1;
+volatile int historyViewIndex = 0;
+volatile int wasScrolling = 0;
+
 // main function
 int main(void) {
 	unsigned char start1[] = "Numdle1:";
@@ -65,6 +77,7 @@ int main(void) {
 	
 	// initialize all hardware components
 	initKeypadIO();
+	initEncoder();
 	i2c_init();
 	lcd_init();
 	buzzer_init();
@@ -319,4 +332,89 @@ void initTimer(){
 	TCCR0A = 0; // Timer0: normal mode, internal clock
 	// TCCR0B = 1; // Timer0: enabled, no prescaler
 	TCCR0B = (1 << CS00); // no prescaler
+}
+
+// Rotary interrupt, once we start scrolling, start showing history
+ISR(PCINT2_vect) {
+	// The two orthogonal signals
+	unsigned char clk = (PIND >> ENC_CLK) & 1;
+	unsigned char dt = (PIND >> ENC_DT) & 1;
+	
+	// Only check when CLK changed from the last one
+	if (clk != lastCLK) {
+		// Check falling edge
+		if (clk == 0) {
+			// Clockwise, CLK is 0 and DT is 1
+			if (dt != clk) {
+				scrollHistory(1);
+			} else {
+				scrollHistory(-1);
+			}
+
+		}
+		// Save the last CLK for next ISR
+		lastCLK = clk;
+	}
+}
+
+// For actually scrolling through history
+void scrollHistory(int dir) {
+	// No attempt so far, exit
+	if (attempts == 0) {
+		return;
+	}
+	
+	// Update index in accordance to scroll direction
+	historyViewIndex += dir;
+	// Cannot scroll past initial attempt
+	if (historyViewIndex < 0) {
+		historyViewIndex = 0;
+	}
+	// Cannot scroll past last attempt
+	if (historyViewIndex >= attempts) {
+		historyViewIndex = attempts - 1;
+	}
+	
+	unsigned char histLabel[] = "History:";
+	
+	// Clear screen and show history:
+	lcdCommanda(0x01);
+	_delay_ms(2);
+	lcd_gotoxy(1,1);
+	lcd_print(histLabel);
+	
+	lcd_gotoxy(1,2);
+	for (int i = 0; i < 6; i++) {
+		// Print each char of prev guess
+		lcdData(guessHistory[historyViewIndex][i]);
+	}
+	
+	// Print current/total prev guesses
+	char indexStr[4];
+	itoa(historyViewIndex +1, indexStr, 10);
+	lcd_gotoxy(11, 1);
+	lcd_print((unsigned char*)indexStr);
+	lcd_gotoxy(12, 1);
+	lcdData('/');
+	lcd_gotoxy(13, 1);
+	itoa(attempts, indexStr, 10);
+	lcd_print((unsigned char*)indexStr);
+	
+	// Set scrolling to 1 so we know to restore
+	wasScrolling = 1;
+}
+
+void initEncoder() {
+	// inputs on PORTD for encoder
+    DDRD  &= ~((1 << ENC_CLK) | (1 << ENC_DT));
+	// pullup resistors
+    PORTD |=  ((1 << ENC_CLK) | (1 << ENC_DT));  
+
+	// PCINT for PORTD pins
+    PCICR  |= (1 << PCIE2);
+	// Which pins to observe on PORTD (PD6 and PD7)
+    PCMSK2 |= (1 << PCINT22) | (1 << PCINT23);
+
+	// Enable interrupts
+    sei();
 }
