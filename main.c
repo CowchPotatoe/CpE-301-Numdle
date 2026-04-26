@@ -339,6 +339,7 @@ ISR(PCINT2_vect) {
 	// The two orthogonal signals
 	unsigned char clk = (PIND >> ENC_CLK) & 1;
 	unsigned char dt = (PIND >> ENC_DT) & 1;
+	static int clicker = 0;
 	
 	// Only check when CLK changed from the last one
 	if (clk != lastCLK) {
@@ -346,11 +347,19 @@ ISR(PCINT2_vect) {
 		if (clk == 0) {
 			// Clockwise, CLK is 0 and DT is 1
 			if (dt != clk) {
-				scrollHistory(1);
+				clicker++;
 			} else {
-				scrollHistory(-1);
+				clicker--;
 			}
-
+			
+			// Scroll on 5 rotations
+			if (clicker >= 5) {
+				scrollHistory(1);
+				clicker = 0;
+			} else if (clicker <= -5) {
+				scrollHistory(-1);
+				clicker = 0;
+			}
 		}
 		// Save the last CLK for next ISR
 		lastCLK = clk;
