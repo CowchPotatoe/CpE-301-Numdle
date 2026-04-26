@@ -2,7 +2,7 @@
  * CpE 301 - Numdle.c
  *
  * Created: 4/7/2026 7:47:00 PM
- * Author : ivanj
+ * Author : Ivan Chen and Isaac Chen
  */ 
 
 #define F_CPU 16000000UL
@@ -242,6 +242,8 @@ void result() {
 			lcdData('_');
 		}
 	}
+	lcdData('=');
+	lcd_print((unsigned char*)answerStr);
 
 	buzzer_error();
 	// Show next prompt if player still has attempts left
