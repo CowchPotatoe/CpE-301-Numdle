@@ -24,7 +24,7 @@
 #define KEY_RPORT PORTD
 
 void initKeypadIO();
-void checkAnyKeyPressed();
+int checkAnyKeyPressed();
 void debounce();
 unsigned char identifyPressedKey();
 

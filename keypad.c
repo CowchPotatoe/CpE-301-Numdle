@@ -3,6 +3,10 @@
 #include <util/delay.h>
 #include "keypad.h"
 
+// Variables for scrolling handling
+extern volatile int wasScrolling;
+extern volatile int historyViewIndex;
+
 void initKeypadIO() {
 	KEY_RDDR |= 0x0F;	// PB3:0 = outputs (drive rows)
 	KEY_CDDR &= 0xF0;	// PC3:0 = inputs (read columns)
@@ -10,7 +14,7 @@ void initKeypadIO() {
 	KEY_CPORT = 0x0F;	// Set pull-up resistors on columns (PC3:0)
 }
 
-void checkAnyKeyPressed() {
+int checkAnyKeyPressed() {
 	unsigned char anyKeyPressed;
 	
 	// Loop until a key is pressed
@@ -19,6 +23,13 @@ void checkAnyKeyPressed() {
 		KEY_RPORT = 0xF0; // PB0-PB3 = 0, PB4-PB7 = 1 
 		anyKeyPressed = KEY_COLSREAD & 0x0F;
 	} while (anyKeyPressed == 0x0F);
+	
+	if (wasScrolling) {
+		wasScrolling = 0;
+		historyViewIndex = 0;
+		return -1;
+	}
+	return 0;
 }
 
 void debounce() {
@@ -97,4 +108,3 @@ unsigned char identifyPressedKey() {
 	// Return value of key pressed
 	return keypad[row][column];
 }
-
